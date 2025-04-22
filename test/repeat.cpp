@@ -1,6 +1,8 @@
 #include "emp-sh2pc/emp-sh2pc.h"
+#include <chrono>
 using namespace emp;
 using namespace std;
+using namespace std::chrono;
 
 int party;
 int port = 12345;
@@ -30,7 +32,27 @@ void test_int_reveal(int number) {
 }
 
 int main(int argc, char** argv) {
-	parse_party_and_port(argv, &party, &port);
-	for(int i = 0; i < 100; ++i)
-		test_int_reveal(1);
+    int party, port;
+    parse_party_and_port(argv, &party, &port);
+    NetIO * io = new NetIO(party == ALICE ? nullptr : "127.0.0.1", port);
+    setup_semi_honest(io, party);
+
+    int and_before = CircuitExecution::circ_exec->num_and();
+    auto time_start = high_resolution_clock::now();
+
+    for(int i = 0; i < 2500000; ++i) {
+        Integer a(32, 123, ALICE);
+        Integer b(32, 124, BOB);
+        Bit res = a > b;
+        Integer c = a + b;
+    }
+
+    auto time_end = high_resolution_clock::now();
+    int and_after = CircuitExecution::circ_exec->num_and();
+    auto elapsed_ms = duration_cast<milliseconds>(time_end - time_start).count();
+
+    cout << "AND gates used: " << (and_after - and_before) << endl;
+    cout << "Runtime (ms): " << elapsed_ms << endl;
+
+    delete io;
 }

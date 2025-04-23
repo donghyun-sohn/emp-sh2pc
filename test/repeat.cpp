@@ -6,36 +6,30 @@ using namespace std::chrono;
 
 int party;
 int port = 12345;
-NetIO * netio;
-void setup() {
-	usleep(100);
-	netio =  new emp::NetIO(party == emp::ALICE ? nullptr : "127.0.0.1", port, true);
-	emp::setup_semi_honest(netio, party,  1024);
+NetIO* netio;
+
+void setup(const char* ip_addr) {
+    usleep(100);
+    netio = new NetIO(party == ALICE ? ip_addr : nullptr, port, true);
+    setup_semi_honest(netio, party, 1024);
+
+    if (party == ALICE) {
+        cout << "[Alice] Connected to Bob at " << ip_addr << ":" << port << endl;
+    } else {
+        cout << "[Bob] Listening on port " << port << "..." << endl;
+    }
 }
+
 void done() {
-	delete netio;
-	finalize_semi_honest();
-}
-
-void test_int_reveal(int number) {
-	setup();
-	Integer a(32, number, ALICE);
-	Integer b;
-	for(int i = 0; i < 1000; ++i)
-		b = Integer(32, number+1, BOB);
-	int32_t aa = a.reveal<int32_t>(PUBLIC);
-	int32_t bb = b.reveal<int32_t>(PUBLIC);
-
-	if(aa != number)error("int a!\n");
-	if(bb != number+1) error("int b!\n");
-	done();
+    delete netio;
+    finalize_semi_honest();
 }
 
 int main(int argc, char** argv) {
-    int party, port;
     parse_party_and_port(argv, &party, &port);
-    NetIO * io = new NetIO(party == ALICE ? nullptr : "127.0.0.1", port);
-    setup_semi_honest(io, party);
+
+    const char* ip_addr = (party == ALICE) ? argv[3] : nullptr;
+    setup(ip_addr);
 
     int and_before = CircuitExecution::circ_exec->num_and();
     auto time_start = high_resolution_clock::now();
@@ -54,5 +48,6 @@ int main(int argc, char** argv) {
     cout << "AND gates used: " << (and_after - and_before) << endl;
     cout << "Runtime (ms): " << elapsed_ms << endl;
 
-    delete io;
+    done();
 }
+
